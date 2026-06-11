@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CodeRefine — AI Code Review Engine</title>
+<link rel="stylesheet" href="assets/css/main.css" />
+</head>
+<body>
+<div class="layout">
+
+  <!-- ─── SIDEBAR ─── -->
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">CodeRefine</div>
+        <div class="logo-sub">AI Code Review Engine</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Analyze</div>
+      <a class="nav-item active" data-page="analyze" onclick="showPage('analyze')">
+        <span class="icon">🔍</span> Code Review
+      </a>
+      <a class="nav-item" data-page="optimize" onclick="showPage('optimize')">
+        <span class="icon">⚡</span> Optimizer
+      </a>
+      <a class="nav-item" data-page="security" onclick="showPage('security')">
+        <span class="icon">🛡️</span> Security Scan
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Insights</div>
+      <a class="nav-item" data-page="dashboard" onclick="showPage('dashboard')">
+        <span class="icon">📊</span> Dashboard
+      </a>
+      <a class="nav-item" data-page="history" onclick="showPage('history')">
+        <span class="icon">🕑</span> History
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Config</div>
+      <a class="nav-item" data-page="settings" onclick="showPage('settings')">
+        <span class="icon">⚙️</span> Settings
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <!-- Logged-in user info -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 4px;margin-bottom:12px;">
+        <div id="user-avatar" style="
+          width:32px;height:32px;border-radius:50%;flex-shrink:0;
+          background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));
+          display:flex;align-items:center;justify-content:center;
+          font-size:13px;font-weight:700;color:#fff;">
+          ?
+        </div>
+        <div>
+          <div id="user-name" style="font-size:12px;font-weight:600;color:var(--text-primary);">Loading…</div>
+          <div style="font-size:10px;color:var(--text-muted);">Developer</div>
+        </div>
+        <button onclick="doLogout()" title="Sign out" style="
+          margin-left:auto;background:none;border:none;cursor:pointer;
+          color:var(--text-muted);font-size:16px;padding:4px;
+          transition:color .2s;" onmouseover="this.style.color='var(--accent-red)'"
+          onmouseout="this.style.color='var(--text-muted)'">⏻</button>
+      </div>
+
+      <div class="model-select">
+        <div>AI Model</div>
+        <select id="modelSelect">
+          <option value="groq-llama3">Groq — LLaMA 3.1</option>
+          <option value="groq-mixtral">Groq — Mixtral</option>
+          <option value="gemini-pro">Gemini 1.5 Pro</option>
+        </select>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── MAIN ─── -->
+  <div class="main">
+
+    <!-- ═══════════════ PAGE: CODE REVIEW ═══════════════ -->
+    <div id="page-analyze" class="page active">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Code Review</div>
+          <div class="page-sub">Detect bugs, performance issues &amp; bad practices</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary btn-sm" onclick="loadSample()">📋 Load Sample</button>
+          <button class="btn btn-secondary btn-sm" onclick="clearAll()">🗑 Clear</button>
+          <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeCode()">
+            🔍 Analyze Code
+          </button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="analyze-layout">
+
+          <!-- Input Panel -->
+          <div class="panel">
+            <div class="panel-header">
+              <span>📝</span>
+              <span class="panel-title">Source Code</span>
+              <div class="panel-actions">
+                <select class="lang-select" id="langSelect">
+                  <option value="python">Python</option>
+                  <option value="javascript">JavaScript</option>
+                  <option value="typescript">TypeScript</option>
+                  <option value="java">Java</option>
+                  <option value="cpp">C++</option>
+                  <option value="go">Go</option>
+                  <option value="rust">Rust</option>
+                  <option value="sql">SQL</option>
+                </select>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="file-drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                📂 Drop a file here or click to upload
+                <input type="file" id="fileInput" style="display:none"
+                  accept=".py,.js,.ts,.java,.cpp,.go,.rs,.sql,.txt"
+                  onchange="loadFile(event)"/>
+              </div>
+              <div class="code-wrapper">
+                <div class="code-toolbar">
+                  <span style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">code.py</span>
+                  <span class="char-count" id="charCount">0 lines · 0 chars</span>
+                </div>
+                <textarea id="codeInput" spellcheck="false"
+                  placeholder="# Paste your code here...
+# CodeRefine will check for:
+#   → Bugs & logic errors
+#   → Performance bottlenecks
+#   → Security vulnerabilities
+#   → Style & best-practice violations
+#   → And suggest optimized rewrites"></textarea>
+              </div>
+              <div class="analyze-bar">
+                <div class="checks">
+                  <label class="check-option"><input type="checkbox" id="chkBugs" checked /> 🐛 Bugs</label>
+                  <label class="check-option"><input type="checkbox" id="chkPerf" checked /> ⚡ Performance</label>
+                  <label class="check-option"><input type="checkbox" id="chkSec"  checked /> 🛡 Security</label>
+                  <label class="check-option"><input type="checkbox" id="chkStyle" checked /> 🎨 Style</label>
+                  <label class="check-option"><input type="checkbox" id="chkOptimize" checked /> ✨ Rewrite</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Results Panel -->
+          <div class="panel">
+            <div class="panel-header">
+              <span>📋</span>
+              <span class="panel-title">Analysis Results</span>
+              <div class="panel-actions" id="resultActions" style="display:none">
+                <div class="tab-bar">
+                  <div class="tab active" onclick="switchResultTab('issues', this)">Issues</div>
+                  <div class="tab" onclick="switchResultTab('optimized', this)">Optimized</div>
+                  <div class="tab" onclick="switchResultTab('diff', this)">Diff</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="copyResult()">📋 Copy</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportReport()">⬇ Export</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="results-scroll" id="resultsScroll">
+                <div class="result-empty" id="resultEmpty">
+                  <div class="empty-icon">🔬</div>
+                  <p>Paste your code and click<br/><strong>Analyze Code</strong> to get started</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: OPTIMIZER ═══════════════ -->
+    <div id="page-optimize" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Code Optimizer</div>
+          <div class="page-sub">Get a clean, optimized rewrite of your code</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="runOptimize()">⚡ Optimize</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="analyze-layout">
+          <div class="panel">
+            <div class="panel-header">
+              <span>📝</span><span class="panel-title">Original Code</span>
+            </div>
+            <div class="panel-body">
+              <textarea id="optimizeInput" spellcheck="false"
+                style="flex:1;background:transparent;border:none;outline:none;resize:none;
+                       color:var(--text-primary);font-family:'JetBrains Mono',monospace;
+                       font-size:13px;line-height:1.7;padding:16px;"
+                placeholder="# Paste code to optimize..."></textarea>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <span>✨</span><span class="panel-title">Optimized Output</span>
+              <div class="panel-actions" id="optimizeResultActions" style="display:none">
+                <button class="btn btn-secondary btn-sm" onclick="copyOptimized()">📋 Copy</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="results-scroll" id="optimizeResults">
+                <div class="result-empty">
+                  <div class="empty-icon">⚡</div>
+                  <p>Paste your code and click<br/><strong>Optimize</strong></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: SECURITY ═══════════════ -->
+    <div id="page-security" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Security Scanner</div>
+          <div class="page-sub">Detect OWASP vulnerabilities, injection risks &amp; insecure patterns</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="runSecurity()">🛡 Scan</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="analyze-layout">
+          <div class="panel">
+            <div class="panel-header">
+              <span>📝</span><span class="panel-title">Code to Scan</span>
+            </div>
+            <div class="panel-body">
+              <textarea id="securityInput" spellcheck="false"
+                style="flex:1;background:transparent;border:none;outline:none;resize:none;
+                       color:var(--text-primary);font-family:'JetBrains Mono',monospace;
+                       font-size:13px;line-height:1.7;padding:16px;"
+                placeholder="# Paste code to scan for security issues..."></textarea>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <span>🛡️</span><span class="panel-title">Security Report</span>
+            </div>
+            <div class="panel-body">
+              <div class="results-scroll" id="securityResults">
+                <div class="result-empty">
+                  <div class="empty-icon">🛡️</div>
+                  <p>Paste code and click<br/><strong>Scan</strong> for vulnerabilities</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: DASHBOARD ═══════════════ -->
+    <div id="page-dashboard" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub">Overview of your code quality metrics</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="dashboard-grid">
+          <div class="metric-card blue">
+            <div class="metric-icon">🔍</div>
+            <div class="metric-value" id="dash-total">0</div>
+            <div class="metric-label">Total Analyses</div>
+            <div class="metric-change" id="dash-change">Start analyzing to see stats</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-icon">🐛</div>
+            <div class="metric-value" id="dash-bugs">0</div>
+            <div class="metric-label">Bugs Found</div>
+            <div class="metric-change" id="dash-bugsub" style="color:var(--accent-yellow)">Across all sessions</div>
+          </div>
+          <div class="metric-card yellow">
+            <div class="metric-icon">⚡</div>
+            <div class="metric-value" id="dash-score">—</div>
+            <div class="metric-label">Avg Quality Score</div>
+            <div class="metric-change" id="dash-scoresub">No data yet</div>
+          </div>
+        </div>
+        <div class="history-table">
+          <div class="table-header">
+            📋 Analysis History
+            <button class="btn btn-danger btn-sm" onclick="clearHistory()">Clear History</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Language</th>
+                <th>Lines</th>
+                <th>Issues</th>
+                <th>Score</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr>
+                <td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px;">
+                  No history yet — run your first analysis!
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: HISTORY ═══════════════ -->
+    <div id="page-history" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Session History</div>
+          <div class="page-sub">Browse and reload past analyses</div>
+        </div>
+      </div>
+      <div class="content">
+        <div id="historyDetailList" style="display:flex;flex-direction:column;gap:12px;">
+          <div class="result-empty" style="padding:60px 0;">
+            <div class="empty-icon">🕑</div>
+            <p>No past analyses yet</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE: SETTINGS ═══════════════ -->
+    <div id="page-settings" class="page">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Settings</div>
+          <div class="page-sub">Configure backend connection and analysis preferences</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-primary btn-sm" onclick="saveSettings()">💾 Save</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="settings-grid">
+
+          <!-- ── AI / Backend config ── -->
+          <div class="settings-section">
+            <div class="settings-section-title">🤖 AI Model Configuration</div>
+
+            <!-- Security info banner -->
+            <div style="margin:14px 20px 4px;padding:13px 16px;
+                        background:rgba(16,185,129,0.07);
+                        border:1px solid rgba(16,185,129,0.2);
+                        border-radius:8px;
+                        display:flex;align-items:flex-start;gap:12px;">
+              <span style="font-size:20px;flex-shrink:0;line-height:1;">🔒</span>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:#10b981;margin-bottom:4px;">
+                  API keys are stored securely on the server
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);line-height:1.7;">
+                  Your Groq, Gemini, and HuggingFace keys are configured in
+                  <code style="background:rgba(255,255,255,0.06);padding:1px 6px;
+                               border-radius:4px;font-family:'JetBrains Mono',monospace;
+                               font-size:11px;">backend/.env</code>
+                  and are <strong style="color:var(--text-secondary);">never</strong>
+                  sent to or stored in the browser.
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div>
+                <label>Backend URL</label>
+                <small>FastAPI server address</small>
+              </div>
+              <input class="settings-input" type="text" id="settBackendUrl"
+                     placeholder="http://localhost:8000" />
+            </div>
+
+            <div class="settings-row">
+              <div>
+                <label>Connection Status</label>
+                <small>Check if the backend is reachable</small>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="checkBackendStatus()" id="pingBtn">
+                🔌 Test Connection
+              </button>
+            </div>
+          </div>
+
+          <!-- ── Analysis preferences ── -->
+          <div class="settings-section">
+            <div class="settings-section-title">🔍 Analysis Preferences</div>
+            <div class="settings-row">
+              <div>
+                <label>Auto-detect Language</label>
+                <small>Detect language from code content</small>
+              </div>
+              <div class="toggle on" id="tog-autodetect" onclick="toggleSetting(this)"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <label>Include Optimized Rewrite</label>
+                <small>Generate a clean rewrite alongside review</small>
+              </div>
+              <div class="toggle on" id="tog-rewrite" onclick="toggleSetting(this)"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <label>Strict Security Mode</label>
+                <small>Flag even minor security concerns</small>
+              </div>
+              <div class="toggle" id="tog-strict" onclick="toggleSetting(this)"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <label>Save History</label>
+                <small>Store analyses locally for review</small>
+              </div>
+              <div class="toggle on" id="tog-history" onclick="toggleSetting(this)"></div>
+            </div>
+          </div>
+
+          <!-- ── Display ── -->
+          <div class="settings-section">
+            <div class="settings-section-title">🎨 Display</div>
+            <div class="settings-row">
+              <div>
+                <label>Show Line Numbers in Results</label>
+                <small>Reference specific lines in issues</small>
+              </div>
+              <div class="toggle on" id="tog-lines" onclick="toggleSetting(this)"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <label>Show Diff View</label>
+                <small>Highlight what changed in optimized code</small>
+              </div>
+              <div class="toggle on" id="tog-diff" onclick="toggleSetting(this)"></div>
+            </div>
+          </div>
+
+          <!-- ── Danger zone ── -->
+          <div class="settings-section">
+            <div class="settings-section-title">⚠️ Account</div>
+            <div class="settings-row">
+              <div>
+                <label>Sign Out</label>
+                <small>Clear session and return to login</small>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="doLogout()">⏻ Sign Out</button>
+            </div>
+            <div class="settings-row">
+              <div>
+                <label>Clear All History</label>
+                <small>Delete all locally stored analysis history</small>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="clearHistory()">🗑 Clear History</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end .main -->
+</div><!-- end .layout -->
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Scripts — order matters -->
+<script src="assets/js/api.js"></script>
+<script src="assets/js/dashboard.js"></script>
+<script src="assets/js/generate.js"></script>
+</body>
+</html>
